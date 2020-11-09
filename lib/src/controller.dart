@@ -3,8 +3,8 @@ part of flutter_unity_widget;
 typedef void UnityWidgetCreatedCallback(UnityWidgetController controller);
 
 class UnityWidgetController {
-  final _UnityWidgetState _unityWidgetState;
-  final MethodChannel channel;
+  _UnityWidgetState _unityWidgetState;
+  MethodChannel channel;
 
   UnityWidgetController._(
     this.channel,
@@ -13,14 +13,27 @@ class UnityWidgetController {
     channel.setMethodCallHandler(_handleMethod);
   }
 
-  static UnityWidgetController init(
-      int id, _UnityWidgetState unityWidgetState) {
-    final MethodChannel channel =
-        MethodChannel('plugins.xraph.com/unity_view_$id');
+  static UnityWidgetController init(int id, _UnityWidgetState unityWidgetState) {
+    MethodChannel channel;
+
+    if (Platform.isIOS) {
+      channel = MethodChannel('plugins.xraph.com/unity_view_0');
+    } else {
+      channel = MethodChannel('plugins.xraph.com/unity_view_$id');
+    }
     return UnityWidgetController._(
       channel,
       unityWidgetState,
     );
+  }
+
+  void dispose() {
+    _unityWidgetState = null;
+    channel = null;
+  }
+
+  void setState(_UnityWidgetState state) {
+    _unityWidgetState = state;
   }
 
   Future<bool> isReady() async {
@@ -49,6 +62,9 @@ class UnityWidgetController {
   }
 
   postMessage(String gameObject, methodName, message) {
+    if (channel == null) {
+      return;
+    }
     channel.invokeMethod('postMessage', <String, dynamic>{
       'gameObject': gameObject,
       'methodName': methodName,
@@ -88,8 +104,8 @@ class UnityWidgetController {
   Future<dynamic> _handleMethod(MethodCall call) async {
     switch (call.method) {
       case "onUnityMessage":
-        if (_unityWidgetState.widget != null) {
-          _unityWidgetState.widget.onUnityMessage(this, call.arguments);
+        if (_unityWidgetState != null && _unityWidgetState.widget != null) {
+          _unityWidgetState.widget.onUnityMessage(_unityWidgetState.context, this, call.arguments);
         }
         break;
       case "onUnityUnloaded":
@@ -114,8 +130,7 @@ class UnityWidgetController {
   }
 }
 
-typedef onUnityMessageCallback = void Function(
-    UnityWidgetController controller, dynamic handler);
+typedef onUnityMessageCallback = void Function(BuildContext context, UnityWidgetController controller, dynamic handler);
 
 typedef onUnitySceneChangeCallback = void Function(
   UnityWidgetController controller, {
