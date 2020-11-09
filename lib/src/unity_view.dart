@@ -85,8 +85,7 @@ class _UnityWidgetState extends State<UnityWidget> {
     };
 
     if (widget.enablePlaceholder) {
-      return widget.placeholder ??
-          Text('Placeholder mode enabled, no native code will be called');
+      return widget.placeholder ?? Text('Placeholder mode enabled, no native code will be called');
     }
 
     if (defaultTargetPlatform == TargetPlatform.android) {
@@ -98,6 +97,9 @@ class _UnityWidgetState extends State<UnityWidget> {
         gestureRecognizers: widget.gestureRecognizers,
       );
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+      if (_controller != null) {
+        _controller.setState(this);
+      }
       return UiKitView(
         viewType: _viewType,
         onPlatformViewCreated: _onPlatformViewCreated,
@@ -107,8 +109,7 @@ class _UnityWidgetState extends State<UnityWidget> {
       );
     }
 
-    return new Text(
-        '$defaultTargetPlatform is not yet supported by this plugin');
+    return new Text('$defaultTargetPlatform is not yet supported by this plugin');
   }
 
   @override
@@ -117,12 +118,24 @@ class _UnityWidgetState extends State<UnityWidget> {
   }
 
   void _onPlatformViewCreated(int id) {
-    _controller = UnityWidgetController.init(id, this);
-    if (widget.onUnityViewCreated != null) {
+    if (Platform.isIOS) {
+      if (_controller != null) {
+        _controller.dispose();
+        _controller = null;
+      }
+      _controller = UnityWidgetController.init(id, this);
+      // if (widget.onUnityViewCreated != null) {
       widget.onUnityViewCreated(_controller);
+      // }
+    } else {
+      _controller = UnityWidgetController.init(id, this);
+      if (widget.onUnityViewCreated != null) {
+        widget.onUnityViewCreated(_controller);
+      }
     }
     print('*********************************************');
     print('** flutter unity controller setup complete **');
     print('*********************************************');
   }
 }
+
